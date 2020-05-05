@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.util.Strings;
 
 public class WebDavProvider extends ResourceProvider {
@@ -21,9 +22,10 @@ public class WebDavProvider extends ResourceProvider {
     private final String host;
     private final String src;
 
+    //http://192.168.1.150/nextcloud/remote.php/webdav/
     public WebDavProvider() {
-        sardine = SardineFactory.begin("admin", "MashGrish");
-        host = "http://192.168.1.150";
+        sardine = SardineFactory.begin("4kict", "MashGrish");
+        host = "http://192.168.31.150";
         src = "/nextcloud/remote.php/webdav/";
     }
 
@@ -34,18 +36,32 @@ public class WebDavProvider extends ResourceProvider {
             .map(r -> new ResourceIdentifier(
                 r.getPath().replace(src, ""),
                 r.getModified(),
-                r.isDirectory()
+                r.isDirectory(),
+                r.isDirectory() ? 0 : r.getContentLength()
             ))
             .collect(Collectors.toList());
     }
 
     @Override
     public boolean upload(byte[] data, String path) {
+        try {
+            sardine.put(host + src + path, data);
+            return true;
+        } catch (IOException e) {
+            //todo
+            e.printStackTrace();
+        }
         return false;
     }
 
     @Override
     public byte[] download(String path) {
+        try {
+            return IOUtils.toByteArray(sardine.get(host + src.replace(" ", "%20") + path.replace(" ", "%20")));
+        } catch (IOException e) {
+            //todo
+            e.printStackTrace();
+        }
         return new byte[0];
     }
 

@@ -8,7 +8,6 @@ import java.nio.file.Paths;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.apache.commons.codec.digest.DigestUtils;
 
 
 public class LocalProvider extends ResourceProvider {
@@ -16,7 +15,7 @@ public class LocalProvider extends ResourceProvider {
     private final String src;
 
     public LocalProvider() {
-        src = System.getProperty("user.home") + "/fotoSrc";
+        src = System.getProperty("user.home") + "/fotoSrc/";
     }
 
     // ходим только в текущей дериктории
@@ -25,7 +24,9 @@ public class LocalProvider extends ResourceProvider {
         return Files.walk(Paths.get(src + path), 1)
             .map(p -> new ResourceIdentifier(p.toString().replace(src, ""),
                 getLastModifiedDate(p),
-                Files.isDirectory(p)))
+                Files.isDirectory(p),
+                Files.isDirectory(p) ? 0 : getSize(p)
+            ))
             .collect(Collectors.toList());
     }
 
@@ -48,6 +49,16 @@ public class LocalProvider extends ResourceProvider {
         } catch (IOException e) {
             // todo
             throw new RuntimeException(e);
+        }
+    }
+
+    private long getSize(Path path) {
+        try {
+            return Files.size(path);
+        } catch (IOException e) {
+            //todo
+            e.printStackTrace();
+            return 0;
         }
     }
 

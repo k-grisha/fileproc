@@ -4,6 +4,7 @@ import com.github.sardine.DavResource;
 import com.github.sardine.Sardine;
 import com.github.sardine.SardineFactory;
 import com.yandex.disk.rest.Credentials;
+import com.yandex.disk.rest.DownloadListener;
 import com.yandex.disk.rest.ResourcesArgs.Builder;
 import com.yandex.disk.rest.RestClient;
 import com.yandex.disk.rest.exceptions.ServerException;
@@ -16,8 +17,10 @@ import gr.fileproc.core.providers.LocalProvider;
 import gr.fileproc.core.providers.WebDavProvider;
 import gr.fileproc.core.providers.YaProvider;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -48,7 +51,7 @@ public class DriverController {
 
     @GetMapping("get-local")
     public List<FileResource> getLocal() throws Exception {
-        return local.getResources("/1");
+        return local.getResources("");
     }
 
     @GetMapping("get-dav")
@@ -167,6 +170,16 @@ public class DriverController {
         RestClient restClient = new RestClient(credentials);
 //        var  diskInfo= restClient.getDiskInfo();
         Resource resources = restClient.getResources(new Builder().setPath("/").build());
+        try {
+            InMemoryStream inMemoryStream = new InMemoryStream();
+            restClient.downloadFile("posobia.tiff", inMemoryStream);
+//            OutputStream outputStream = inMemoryStream.getOutputStream(true);
+            byte[] byteArray = inMemoryStream.getByteArray();
+            System.out.println(byteArray.length);
+            return null;
+        } catch (ServerException e) {
+            e.printStackTrace();
+        }
         System.out.println(resources);
         var result = new ArrayList<String>();
 
@@ -185,6 +198,21 @@ public class DriverController {
         var result = new ArrayList<String>();
 
         return result;
+    }
+
+    public static class InMemoryStream extends DownloadListener {
+
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+
+        @Override
+        public OutputStream getOutputStream(boolean append) throws IOException {
+            return byteArrayOutputStream;
+        }
+
+        byte[] getByteArray() {
+            return byteArrayOutputStream.toByteArray();
+        }
+
     }
 
 

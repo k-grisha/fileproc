@@ -20,7 +20,7 @@ import org.apache.commons.lang3.StringUtils;
 @Slf4j
 public abstract class ResourceProvider {
 
-    private final static String MD5_MAP_FILE = ".^mdproc.ser";
+    private final static String MD5_MAP_FILE = ".mdproc.ser";
 
     public List<FileResource> getResources(String path) throws Exception {
         List<ResourceIdentifier> resources = getIdentifiers(path).stream()
@@ -30,7 +30,8 @@ public abstract class ResourceProvider {
         var mdMap = getMd5Map(path, resources);
         return resources.stream()
             .filter(r -> !r.getFilename().equals(MD5_MAP_FILE))
-            .map(r -> new FileResource(r.path, r.isFile() ? mdMap.get(r.path).get(1) : null, r.directory))
+            .map(r -> new FileResource(r.path, r.isFile() ? mdMap.get(r.path).get(1) : null, r.directory, r.size))
+            .filter(f -> !f.getPath().isBlank())
             .collect(Collectors.toList());
     }
 
@@ -55,7 +56,7 @@ public abstract class ResourceProvider {
             });
 
         if (!Objects.deepEquals(md5Map, persistedMd5Map)) {
-            upload(SerializationUtils.serialize(md5Map), path + "/" + MD5_MAP_FILE);
+            upload(SerializationUtils.serialize(md5Map), path + MD5_MAP_FILE);
         }
         return md5Map;
     }
@@ -99,13 +100,15 @@ public abstract class ResourceProvider {
         private final boolean directory;
         private final LocalDateTime modifiedLocalDateTime;
         private final String filename;
+        private final long size;
 
-        public ResourceIdentifier(String path, Date modified, boolean directory) {
+        public ResourceIdentifier(String path, Date modified, boolean directory, Long size) {
             this.path = path;
             this.modified = modified;
             this.directory = directory;
             this.modifiedLocalDateTime = modified == null ? null : new java.sql.Timestamp(modified.getTime()).toLocalDateTime();
             this.filename = Paths.get(path).getFileName().toString();
+            this.size = size == null ? 0 : size;
         }
 
         public boolean isFile() {
