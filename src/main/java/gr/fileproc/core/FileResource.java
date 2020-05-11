@@ -11,7 +11,7 @@ public class FileResource {
     private final long size;
 
     public FileResource(String path, String md5, boolean directory, long size) {
-        this.path = path.trim().replaceAll("^/|/$", "");
+        this.path = path;
         this.md5 = md5;
         this.directory = directory;
         this.size = size;

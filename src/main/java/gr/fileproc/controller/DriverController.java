@@ -37,6 +37,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
@@ -49,19 +51,19 @@ public class DriverController {
     ResourceProvider webDav = new WebDavProvider();
     ResourceProvider yandex = new YaProvider();
 
-    @GetMapping("get-local")
-    public List<FileResource> getLocal() throws Exception {
-        return local.getResources("");
+    @PostMapping("get-local")
+    public List<FileResource> getLocal(@RequestBody RequestDto path) throws Exception {
+        return local.getResources(path.getPath());
     }
 
-    @GetMapping("get-dav")
-    public List<FileResource> getWebDav() throws Exception {
-        return webDav.getResources("");
+    @PostMapping("get-dav")
+    public List<FileResource> getWebDav(@RequestBody RequestDto path) throws Exception {
+        return webDav.getResources(path.getPath());
     }
 
-    @GetMapping("get-ya")
-    public List<FileResource> getYa() throws Exception {
-        return yandex.getResources("");
+    @PostMapping("get-ya")
+    public List<FileResource> getYa(@RequestBody RequestDto path) throws Exception {
+        return yandex.getResources(path.getPath());
     }
 
     @GetMapping({"/file/{path}", "/file"})

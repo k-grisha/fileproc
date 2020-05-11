@@ -3,6 +3,7 @@ package gr.fileproc.core.providers;
 import com.github.sardine.DavResource;
 import com.github.sardine.Sardine;
 import com.github.sardine.SardineFactory;
+import com.github.sardine.impl.SardineException;
 import com.github.sardine.util.SardineUtil;
 import gr.fileproc.core.ResourceProvider;
 import java.io.IOException;
@@ -11,10 +12,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.http.client.HttpResponseException;
 import org.apache.logging.log4j.util.Strings;
 
+@Slf4j
 public class WebDavProvider extends ResourceProvider {
 
     private final static String MD5_KEY = "MD5";
@@ -31,38 +35,40 @@ public class WebDavProvider extends ResourceProvider {
 
     @Override
     public List<ResourceIdentifier> getIdentifiers(String path) throws Exception {
-        var resources = sardine.list(host + src + path, 1);
+        List<DavResource> resources = null;
+        try {
+            resources = sardine.list(host + src + path, 1);
+        } catch (HttpResponseException e) {
+            log.warn("Unable to read path " + path + ". HTTPCode:" + e.getStatusCode() + ". Message:" + e.getReasonPhrase());
+            return Collections.emptyList();
+        }
         return resources.stream()
             .map(r -> new ResourceIdentifier(
                 r.getPath().replace(src, ""),
                 r.getModified(),
                 r.isDirectory(),
-                r.isDirectory() ? 0 : r.getContentLength()
-            ))
+                r.isDirectory() ? 0 : r.getContentLength()))
             .collect(Collectors.toList());
     }
 
     @Override
-    public boolean upload(byte[] data, String path) {
-        try {
-            sardine.put(host + src + path, data);
-            return true;
-        } catch (IOException e) {
-            //todo
-            e.printStackTrace();
-        }
-        return false;
+    public void upload(byte[] data, String path) throws Exception {
+        sardine.put(host + src + path, data);
     }
 
     @Override
-    public byte[] download(String path) {
-        try {
-            return IOUtils.toByteArray(sardine.get(host + src.replace(" ", "%20") + path.replace(" ", "%20")));
-        } catch (IOException e) {
-            //todo
-            e.printStackTrace();
-        }
-        return new byte[0];
+    public byte[] download(String path) throws Exception {
+        return IOUtils.toByteArray(sardine.get(host + src.replace(" ", "%20") + path.replace(" ", "%20")));
+    }
+
+    @Override
+    public String getRootPath() {
+        return src;
+    }
+
+    @Override
+    public String providerName() {
+        return "WebDav";
     }
 
     private InputStream download(DavResource resource) throws IOException {
