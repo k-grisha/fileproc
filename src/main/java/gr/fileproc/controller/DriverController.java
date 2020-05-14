@@ -11,6 +11,7 @@ import com.yandex.disk.rest.exceptions.ServerException;
 import com.yandex.disk.rest.exceptions.ServerIOException;
 import com.yandex.disk.rest.json.Link;
 import com.yandex.disk.rest.json.Resource;
+import gr.fileproc.Synchronizer;
 import gr.fileproc.core.FileResource;
 import gr.fileproc.core.ResourceProvider;
 import gr.fileproc.core.providers.LocalProvider;
@@ -47,13 +48,21 @@ public class DriverController {
 
     String home = System.getProperty("user.home");
 
-    ResourceProvider local = new LocalProvider();
+    ResourceProvider localSrc = new LocalProvider("/fotoSrc/");
+    ResourceProvider localDst = new LocalProvider("/fotoDest/");
     ResourceProvider webDav = new WebDavProvider();
     ResourceProvider yandex = new YaProvider();
 
+    Synchronizer synchronizer = new Synchronizer();
+
+    @GetMapping("sync-local")
+    public void sync(){
+        synchronizer.sync(localSrc, localDst, "");
+    }
+
     @PostMapping("get-local")
     public List<FileResource> getLocal(@RequestBody RequestDto path) throws Exception {
-        return local.getResources(path.getPath());
+        return localSrc.getResources(path.getPath());
     }
 
     @PostMapping("get-dav")

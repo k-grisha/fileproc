@@ -12,6 +12,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -23,23 +25,22 @@ public abstract class ResourceProvider {
 
     private final static String MD5_MAP_FILE = ".mdproc.ser";
 
-    public List<FileResource> getResources(String path) throws Exception {
-        List<ResourceIdentifier> identifiers;
+    public List<FileResource> getResources(String folder) {
+        folder = trimSlashes(folder);
+        var path = folder.isBlank() ? "" : folder + "/";
+        final List<ResourceIdentifier> identifiers;
         try {
-            identifiers = getIdentifiers(trimSlashes(path));
+            identifiers = filterAndGeneralize(getIdentifiers(path), path);
         } catch (Exception e) {
             log.warn("Cant read list of resources from " + providerName(), e);
             return Collections.emptyList();
         }
 
-        var resources = identifiers.stream()
-            .filter(identifier -> isValid(identifier, path))
-            .collect(Collectors.toList());
+        var mdMap = getMd5Map(path, identifiers);
 
-        var mdMap = getMd5Map(path, resources);
-        return resources.stream()
+        return identifiers.stream()
             .filter(r -> !r.getFilename().equals(MD5_MAP_FILE))
-            .map(r -> new FileResource(trimSlashes(r.getPath()),
+            .map(r -> new FileResource(r.getPath(),
                 r.isFile() ? mdMap.get(r.path).get(1) : null,
                 r.directory,
                 r.size))
@@ -47,15 +48,27 @@ public abstract class ResourceProvider {
             .collect(Collectors.toList());
     }
 
-    private boolean isValid(ResourceIdentifier identifier, String path) {
+    private List<ResourceIdentifier> filterAndGeneralize(List<ResourceIdentifier> identifiers, String path) {
+        return identifiers.stream()
+            .filter(this::isValid)
+            .map(r -> r.toBuilder()
+                .filename(trimSlashes(r.getFilename()))
+                .path(trimSlashes(r.getPath()) + (r.isDirectory() ? "/" : ""))
+                .build()
+            )
+            .filter(identifier -> !identifier.getPath().equals(path)
+                && !trimSlashes(identifier.getPath()).equals(trimSlashes(getRootPath())))
+            .collect(Collectors.toList());
+    }
+
+    private boolean isValid(ResourceIdentifier identifier) {
         return identifier != null
             && identifier.getFilename() != null
             && identifier.getPath() != null
             && !trimSlashes(identifier.getFilename()).isBlank()
             && !trimSlashes(identifier.getPath()).isBlank()
-            && (!identifier.getFilename().startsWith(".") || identifier.getFilename().equals(MD5_MAP_FILE))
-            && !trimSlashes(identifier.getPath()).equals(trimSlashes(getRootPath()))
-            && !trimSlashes(identifier.getPath()).equals(trimSlashes(path));
+            // filter hidden files
+            && (!identifier.getFilename().startsWith(".") || identifier.getFilename().equals(MD5_MAP_FILE));
     }
 
     private String trimSlashes(String str) {
@@ -128,6 +141,7 @@ public abstract class ResourceProvider {
 
     abstract public List<ResourceIdentifier> getIdentifiers(String path) throws Exception;
 
+    // todo сохранять md5 нового файла
     abstract public void upload(byte[] data, String path) throws Exception;
 
     abstract public byte[] download(String path) throws Exception;
@@ -136,8 +150,12 @@ public abstract class ResourceProvider {
 
     abstract public String providerName();
 
+    public abstract void mkdir(String path);
+
 
     @Getter
+    @Builder(toBuilder = true)
+    @AllArgsConstructor
     public static class ResourceIdentifier {
 
         private final String path;

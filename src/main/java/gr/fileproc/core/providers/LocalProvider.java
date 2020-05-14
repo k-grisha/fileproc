@@ -1,6 +1,7 @@
 package gr.fileproc.core.providers;
 
 import gr.fileproc.core.ResourceProvider;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -17,8 +18,8 @@ public class LocalProvider extends ResourceProvider {
 
     private final String src;
 
-    public LocalProvider() {
-        src = System.getProperty("user.home") + "/fotoSrc/";
+    public LocalProvider(String dir) {
+        src = System.getProperty("user.home") + dir;
     }
 
     // ходим только в текущей дериктории
@@ -56,6 +57,11 @@ public class LocalProvider extends ResourceProvider {
     @Override
     public String providerName() {
         return "LocalDisk";
+    }
+
+    @Override
+    public void mkdir(String path) {
+        new File(src + path).mkdirs();
     }
 
     private long getSize(Path path) {

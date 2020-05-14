@@ -34,7 +34,7 @@ public class YaProvider extends ResourceProvider {
     public List<ResourceIdentifier> getIdentifiers(String path) throws Exception {
         Resource response;
         try {
-            response = restClient.getResources(new Builder().setPath(path + "/").build());
+            response = restClient.getResources(new Builder().setPath(path).build());
         } catch (HttpCodeException e) {
             log.warn("Unable to read path " + path + ". HTTPCode: " + e.getCode() + ". Message:" + e.getResponse().getError());
             return Collections.emptyList();
@@ -82,6 +82,11 @@ public class YaProvider extends ResourceProvider {
     @Override
     public String providerName() {
         return "YaDisk";
+    }
+
+    @Override
+    public void mkdir(String path) {
+
     }
 
     public static class InMemoryStream extends DownloadListener {

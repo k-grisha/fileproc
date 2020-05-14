@@ -77,6 +77,11 @@ public class WebDavProvider extends ResourceProvider {
         return sardine.get(host + resource.getPath().replace(" ", "%20"));
     }
 
+    @Override
+    public void mkdir(String path) {
+
+    }
+
     private String getMd5(DavResource resource) {
         if (resource.isDirectory()) {
             return null;
