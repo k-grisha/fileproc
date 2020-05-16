@@ -52,7 +52,7 @@ public class YaProvider extends ResourceProvider {
     }
 
     @Override
-    public void upload(byte[] data, String path) throws Exception {
+    public ResourceIdentifier upload(byte[] data, String path) throws Exception {
         Link uploadLink = restClient.getUploadLink(path, true);
         File temp = File.createTempFile("pattern", ".suffix");
         OutputStream os = new FileOutputStream(temp);
@@ -60,6 +60,7 @@ public class YaProvider extends ResourceProvider {
         os.close();
         restClient.uploadFile(uploadLink, false, temp, null);
         Files.readAllBytes(temp.toPath());
+        return null;
     }
 
     @Override

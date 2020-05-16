@@ -29,7 +29,7 @@ public class Synchronizer {
             }
             try {
                 var data = src.download(r.getPath());
-                dest.upload(data, r.getPath());
+                dest.uploadFileAndPersistMd5(data, r.getPath());
             } catch (Exception e) {
                 log.warn("Fail to sync " + r.getPath() + " from " + src.providerName() + " to " + dest.providerName(), e);
             }

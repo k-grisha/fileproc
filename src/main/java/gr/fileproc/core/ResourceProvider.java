@@ -30,7 +30,7 @@ public abstract class ResourceProvider {
         var path = folder.isBlank() ? "" : folder + "/";
         final List<ResourceIdentifier> identifiers;
         try {
-            identifiers = filterAndGeneralize(getIdentifiers(path), path);
+            identifiers = filter(getIdentifiers(path), path);
         } catch (Exception e) {
             log.warn("Cant read list of resources from " + providerName(), e);
             return Collections.emptyList();
@@ -48,14 +48,9 @@ public abstract class ResourceProvider {
             .collect(Collectors.toList());
     }
 
-    private List<ResourceIdentifier> filterAndGeneralize(List<ResourceIdentifier> identifiers, String path) {
+    private List<ResourceIdentifier> filter(List<ResourceIdentifier> identifiers, String path) {
         return identifiers.stream()
             .filter(this::isValid)
-            .map(r -> r.toBuilder()
-                .filename(trimSlashes(r.getFilename()))
-                .path(trimSlashes(r.getPath()) + (r.isDirectory() ? "/" : ""))
-                .build()
-            )
             .filter(identifier -> !identifier.getPath().equals(path)
                 && !trimSlashes(identifier.getPath()).equals(trimSlashes(getRootPath())))
             .collect(Collectors.toList());
@@ -71,15 +66,16 @@ public abstract class ResourceProvider {
             && (!identifier.getFilename().startsWith(".") || identifier.getFilename().equals(MD5_MAP_FILE));
     }
 
-    private String trimSlashes(String str) {
-        return str.trim().replaceAll("^/|/$", "");
-    }
 
+    /**
+     * MD5 файлов хранится в Map<String, List<String>> где, ключ - путь к файлу 0-й элемент - дата последнего изменения файла
+     * (identRes.getModifiedAsString()) 1-й элемент - сам md5
+     */
     private Map<String, List<String>> getMd5Map(String path, List<ResourceIdentifier> resources) {
         if (resources.stream().allMatch(ResourceIdentifier::isDirectory)) {
             return Collections.emptyMap();
         }
-        Map<String, List<String>> persistedMd5Map = readPersistMd5Map(resources);
+        Map<String, List<String>> persistedMd5Map = readPersistedMd5Map(resources);
         HashMap<String, List<String>> md5Map = new HashMap<>();
         resources.stream()
             .filter(ResourceIdentifier::isFile)
@@ -117,32 +113,60 @@ public abstract class ResourceProvider {
         return resource.getModifiedAsString().equals(dateMd5.get(0));
     }
 
-    private Map<String, List<String>> readPersistMd5Map(List<ResourceIdentifier> resources) {
+    private Map<String, List<String>> readPersistedMd5Map(List<ResourceIdentifier> resources) {
         Optional<ResourceIdentifier> mdMapFile = resources.stream()
             .filter(r -> r.path.endsWith(MD5_MAP_FILE))
             .findFirst();
         if (mdMapFile.isEmpty()) {
             return Collections.emptyMap();
         }
+        return readPersistedMd5Map(mdMapFile.get().path);
+    }
+
+    private Map<String, List<String>> readPersistedMd5Map(String path) {
         byte[] data;
         try {
-            data = download(mdMapFile.get().path);
+            data = download(path);
         } catch (Exception e) {
-            log.warn("Cant download file " + mdMapFile.get().path + " by " + providerName(), e);
-            return Collections.emptyMap();
+            return new HashMap<>();
         }
         try {
             return SerializationUtils.deserialize(data);
-        } catch (RuntimeException e) {
-            log.warn("Cant deserialize file " + mdMapFile.get().path + " from " + providerName(), e);
-            return Collections.emptyMap();
+        } catch (Exception e) {
+            log.warn("Cant read md5 file " + path + " by " + providerName(), e);
+            return new HashMap<>();
         }
+    }
+
+    public void uploadFileAndPersistMd5(byte[] data, String path) {
+        ResourceIdentifier identifier;
+        try {
+            identifier = upload(data, path);
+        } catch (Exception e) {
+            log.warn("Fail to upload " + path + " by " + providerName(), e);
+            return;
+        }
+        if (path.endsWith(MD5_MAP_FILE)) {
+            return;
+        }
+
+        var parentPath = Paths.get(path).getParent();
+        var parentFolder = parentPath == null ? "/" : trimSlashes(parentPath.toString()) + "/";
+
+        var md5Map = readPersistedMd5Map(parentFolder + MD5_MAP_FILE);
+        var md5 = DigestUtils.md5Hex(data);
+        md5Map.put(path, List.of(identifier.getModifiedAsString(), md5));
+        try {
+            upload(SerializationUtils.serialize(new HashMap<>(md5Map)), parentFolder + MD5_MAP_FILE);
+        } catch (Exception e) {
+            log.error("Unable to update " + MD5_MAP_FILE + " file by " + providerName(), e);
+        }
+
     }
 
     abstract public List<ResourceIdentifier> getIdentifiers(String path) throws Exception;
 
-    // todo сохранять md5 нового файла
-    abstract public void upload(byte[] data, String path) throws Exception;
+    abstract public ResourceIdentifier upload(byte[] data, String path) throws Exception;
 
     abstract public byte[] download(String path) throws Exception;
 
@@ -166,11 +190,11 @@ public abstract class ResourceProvider {
         private final long size;
 
         public ResourceIdentifier(String path, Date modified, boolean directory, Long size) {
-            this.path = path;
+            this.path = trimSlashes(path) + (directory ? "/" : "");
             this.modified = modified;
             this.directory = directory;
             this.modifiedLocalDateTime = modified == null ? null : new java.sql.Timestamp(modified.getTime()).toLocalDateTime();
-            this.filename = Paths.get(path).getFileName().toString();
+            this.filename = trimSlashes(Paths.get(path).getFileName().toString());
             this.size = size == null ? 0 : size;
         }
 
@@ -182,6 +206,9 @@ public abstract class ResourceProvider {
             return getModifiedLocalDateTime().format(DateTimeFormatter.ISO_DATE_TIME);
         }
 
+    }
 
+    public static String trimSlashes(String str) {
+        return str.trim().replaceAll("^/|/$", "");
     }
 }

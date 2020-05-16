@@ -27,11 +27,7 @@ public class LocalProvider extends ResourceProvider {
     public List<ResourceIdentifier> getIdentifiers(String path) throws Exception {
         try {
             return Files.walk(Paths.get(src + path), 1)
-                .map(p -> new ResourceIdentifier(p.toString().replace(src, ""),
-                    getLastModifiedDate(p),
-                    Files.isDirectory(p),
-                    Files.isDirectory(p) ? 0 : getSize(p)
-                ))
+                .map(this::getResourceIdentifierFrom)
                 .collect(Collectors.toList());
         } catch (NoSuchFileException e) {
             log.warn("No such file " + path);
@@ -40,8 +36,9 @@ public class LocalProvider extends ResourceProvider {
     }
 
     @Override
-    public void upload(byte[] data, String path) throws Exception {
-        Files.write(Paths.get(src + path), data);
+    public ResourceIdentifier upload(byte[] data, String path) throws Exception {
+        var savedPath = Files.write(Paths.get(src + path), data);
+        return getResourceIdentifierFrom(savedPath);
     }
 
     @Override
@@ -62,6 +59,14 @@ public class LocalProvider extends ResourceProvider {
     @Override
     public void mkdir(String path) {
         new File(src + path).mkdirs();
+    }
+
+    private ResourceIdentifier getResourceIdentifierFrom(Path p) {
+        return new ResourceIdentifier(p.toString().replace(src, ""),
+            getLastModifiedDate(p),
+            Files.isDirectory(p),
+            Files.isDirectory(p) ? 0 : getSize(p)
+        );
     }
 
     private long getSize(Path path) {

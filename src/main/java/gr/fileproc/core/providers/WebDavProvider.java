@@ -52,8 +52,9 @@ public class WebDavProvider extends ResourceProvider {
     }
 
     @Override
-    public void upload(byte[] data, String path) throws Exception {
+    public ResourceIdentifier upload(byte[] data, String path) throws Exception {
         sardine.put(host + src + path, data);
+        return null;
     }
 
     @Override
