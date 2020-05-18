@@ -3,7 +3,6 @@ package gr.fileproc.core.providers;
 import com.github.sardine.DavResource;
 import com.github.sardine.Sardine;
 import com.github.sardine.SardineFactory;
-import com.github.sardine.impl.SardineException;
 import com.github.sardine.util.SardineUtil;
 import gr.fileproc.core.ResourceProvider;
 import java.io.IOException;
@@ -54,7 +53,11 @@ public class WebDavProvider extends ResourceProvider {
     @Override
     public ResourceIdentifier upload(byte[] data, String path) throws Exception {
         sardine.put(host + src + path, data);
-        return null;
+        var identifiers = getIdentifiers(path);
+        if (identifiers.size() != 1) {
+            throw new RuntimeException("Unable to validate uploaded file");
+        }
+        return identifiers.get(0);
     }
 
     @Override
@@ -79,8 +82,8 @@ public class WebDavProvider extends ResourceProvider {
     }
 
     @Override
-    public void mkdir(String path) {
-
+    public void mkdir(String path) throws Exception {
+        sardine.createDirectory(host + src + path);
     }
 
     private String getMd5(DavResource resource) {

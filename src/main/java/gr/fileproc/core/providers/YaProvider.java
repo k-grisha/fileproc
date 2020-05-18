@@ -14,7 +14,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.file.Files;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -59,8 +58,11 @@ public class YaProvider extends ResourceProvider {
         os.write(data);
         os.close();
         restClient.uploadFile(uploadLink, false, temp, null);
-        Files.readAllBytes(temp.toPath());
-        return null;
+        var identifiers = getIdentifiers(path);
+        if (identifiers.size() != 1) {
+            throw new RuntimeException("Unable to validate uploaded file");
+        }
+        return identifiers.get(0);
     }
 
     @Override
@@ -86,8 +88,8 @@ public class YaProvider extends ResourceProvider {
     }
 
     @Override
-    public void mkdir(String path) {
-
+    public void mkdir(String path) throws Exception {
+        restClient.makeFolder(path);
     }
 
     public static class InMemoryStream extends DownloadListener {

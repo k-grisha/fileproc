@@ -57,7 +57,7 @@ public class DriverController {
 
     @GetMapping("sync-local")
     public void sync(){
-        synchronizer.sync(localSrc, localDst, "");
+        synchronizer.sync(webDav, yandex, "");
     }
 
     @PostMapping("get-local")

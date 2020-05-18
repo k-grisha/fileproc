@@ -26,8 +26,8 @@ public abstract class ResourceProvider {
     private final static String MD5_MAP_FILE = ".mdproc.ser";
 
     public List<FileResource> getResources(String folder) {
-        folder = trimSlashes(folder);
-        var path = folder.isBlank() ? "" : folder + "/";
+//        folder = trimSlashes(folder);
+        var path = trimSlashes(folder) + "/";
         final List<ResourceIdentifier> identifiers;
         try {
             identifiers = filter(getIdentifiers(path), path);
@@ -174,7 +174,7 @@ public abstract class ResourceProvider {
 
     abstract public String providerName();
 
-    public abstract void mkdir(String path);
+    public abstract void mkdir(String path) throws Exception;
 
 
     @Getter

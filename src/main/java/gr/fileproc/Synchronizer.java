@@ -20,9 +20,14 @@ public class Synchronizer {
 
         srcResources.forEach(r -> {
             if (r.isDirectory()) {
-                dest.mkdir(r.getPath());
-                sync(src, dest, r.getPath());
-                return;
+                try {
+                    dest.mkdir(r.getPath());
+                    sync(src, dest, r.getPath());
+                    return;
+                } catch (Exception e) {
+                    log.warn("Cant sync " + r.getPath(), e);
+                    return;
+                }
             }
             if (md5Map.containsKey(r.getPath()) && md5Map.get(r.getPath()).equals(r.getMd5())) {
                 return;
